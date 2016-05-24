@@ -22,56 +22,38 @@
      [:div#app]
      (include-js "/js/app.js")]))
 
-(def db (atom []))
+(defn format-resp [cnt]
+  {:body (reduce-kv (fn [acc k v] (conj acc (assoc v :id k))) [] cnt)})
+
+(defonce db (atom {}))
 
 (defn count-all []
-  {:body @db})
+  (format-resp @db))
 
 (defn count-create [body]
-  (let [last-id (get (last @db) :id 1)
-        item {:id (inc last-id) :title (:title body) :count 0}]
-    (do
-      (swap! db #(conj % item))
-      {:body @db})))
+  (let [last-id (if (empty? @db) 0 (apply max (keys @db)))
+        item {:title (:title body) :count 0}]
+    (do (swap! db #(assoc % (inc last-id) item))
+        (format-resp @db))))
 
-(defn count-create [body]
-  (let [last-id (get (last @db) :id 0)
-        item {:id (inc last-id) :title (:title body) :count 0}]
-    (do
-      (swap! db #(conj % item))
-      {:body @db})))
-
-(defn count-inc [body]
-  (let [id (Integer. (:id body))]
-    (swap! db #(map (fn [x]
-                      (if (= (:id x) id)
-                        (assoc x :count (inc (:count  x)))
-                        x
-                        )) %))))
-
-(defn count-dec [body]
-  (let [id (Integer. (:id body))]
-    (swap! db #(map (fn [x]
-                      (if (= (:id x) id)
-                        (assoc x :count (dec (:count  x)))
-                        x
-                        )) %))))
+(defn count-adjust [body adjustment]
+  (let [id (Integer. (:id body))
+        item (@db id)
+        adjusted-item (assoc item :count (adjustment (:count item)))]
+    (do (swap! db #(assoc % id adjusted-item))
+        (format-resp @db))))
 
 (defn count-del [body]
   (let [id (Integer. (:id body))]
-    (swap! db #(filter (fn [x]
-                         (if-not (= id (:id x))
-                           x)
-                         ) %))))
+    (do (swap! db #(dissoc % id))
+        (format-resp @db))))
 
 (defroutes api-routes
   (GET "/api/v1/counters" [] (count-all))
   (POST "/api/v1/counters" {body :body} (count-create body))
-  (POST "/api/v1/counters/inc" {body :body} (count-inc body))
-  (POST "/api/v1/counters/dec" {body :body} (count-dec body))
+  (POST "/api/v1/counters/inc" {body :body} (count-adjust body inc))
+  (POST "/api/v1/counters/dec" {body :body} (count-adjust body dec))
   (DELETE "/api/v1/counters" {body :body} (count-del body)))
-
- (GET "/users/:id"  [id :<< as-int]  (count-inc id))
 
 (defroutes site-routes
   (GET "/" [] page)
