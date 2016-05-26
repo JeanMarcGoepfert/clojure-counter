@@ -97,19 +97,17 @@
                    :figwheel {:http-server-root "public"
                               :server-port 3449
                               :nrepl-port 7002
-                              :nrepl-middleware ["cemerick.piggieback/wrap-cljs-repl"
-                                                 ]
+                              :server-ip "0.0.0.0"
+                              :nrepl-middleware ["cemerick.piggieback/wrap-cljs-repl"]
                               :css-dirs ["resources/public/css"]
                               :ring-handler counter.handler/app}
 
                    :env {:dev true}
 
                    :cljsbuild {:builds {:app {:source-paths ["env/dev/cljs"]
+                                              :figwheel {:websocket-host "0.0.0.0"}
                                               :compiler {:main "counter.dev"
                                                          :source-map true}}
-
-
-
                                         }
                                }}
 
